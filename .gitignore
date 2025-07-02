@@ -1,0 +1,109 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+.genkit/*
+.env*
+
+# firebase
+firebase-debug.log
+firestore-debug.log
+pglite-debug.log*
+
+# Firebase admin service account keys (SECURITY)
+*firebase-adminsdk*.json
+climact-suite-firebase-adminsdk*.json
+firebase-adminsdk-*.json
+
+# backup files
+*.backup
+*.bak
+*.old
+*.tmp
+*~
+
+# Build artifacts & generated files
+next-env.d.ts
+*.tsbuildinfo
+firebase/functions/lib/
+
+# Test artifacts
+test-results/
+coverage/
+
+# IDE & OS files
+.DS_Store
+.vscode/
+.idea/
+.idx/
+*.swp
+*.swo
+*~
+
+# Claude Code files
+.claude/
+claude-settings.json
+CLAUDE.md
+
+# Firebase App Hosting
+apphosting.yaml
+
+# Development scripts (keep in repo but ignore in production)
+scripts/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Temporary folders
+tmp/
+temp/

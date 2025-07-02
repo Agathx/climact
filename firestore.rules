@@ -1,0 +1,118 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===== FUNÇÕES AUXILIARES =====
+    
+    // Verificar se usuário está autenticado
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Verificar se é o próprio usuário
+    function isOwner(uid) {
+      return request.auth.uid == uid;
+    }
+    
+    // Verificar role do usuário
+    function hasRole(role) {
+      return isAuthenticated() && 
+             request.auth.token.role == role;
+    }
+    
+    // Verificar se tem uma das roles especificadas
+    function hasAnyRole(roles) {
+      return isAuthenticated() && 
+             request.auth.token.role in roles;
+    }
+    
+    // ===== REGRAS PARA DESENVOLVIMENTO LOCAL =====
+    
+    // Coleção users - mais permissiva para testes
+    match /users/{userId} {
+      allow read, write: if isAuthenticated();
+      // Apenas admins podem criar/deletar usuários
+      allow create, delete: if hasRole('admin');
+    }
+    
+    // Subcoleção profile_upgrades
+    match /users/{userId}/profile_upgrades/{upgradeId} {
+      allow read, write: if isAuthenticated();
+    }
+    
+    // Coleção reports
+    match /reports/{reportId} {
+      allow read, write: if isAuthenticated();
+    }
+    
+    // Coleção incidents
+    match /incidents/{incidentId} {
+      allow read: if true; // Público para visualização
+      allow write: if isAuthenticated();
+    }
+    
+    // Coleção anonymous_reports
+    match /anonymous_reports/{reportId} {
+      allow read, write: if isAuthenticated();
+    }
+    
+    // Coleção official_alerts
+    match /official_alerts/{alertId} {
+      allow read: if true; // Público
+      allow write: if isAuthenticated();
+    }
+    
+    // Coleção chat_channels
+    match /chat_channels/{channelId} {
+      allow read, write: if isAuthenticated();
+      
+      // Subcoleção messages
+      match /messages/{messageId} {
+        allow read, write: if isAuthenticated();
+      }
+    }
+    
+    // Coleção education_trails
+    match /education_trails/{trailId} {
+      allow read: if true; // Público
+      allow write: if isAuthenticated();
+    }
+    
+    // Coleção user_progress
+    match /user_progress/{progressId} {
+      allow read, write: if isAuthenticated();
+    }
+    
+    // Coleção donation_requests
+    match /donation_requests/{requestId} {
+      allow read, write: if isAuthenticated();
+    }
+    
+    // Coleção data_exports
+    match /data_exports/{exportId} {
+      allow read, write: if isAuthenticated();
+    }
+    
+    // Coleção user_history
+    match /user_history/{historyId} {
+      allow read, write: if isAuthenticated();
+    }
+    
+    // Coleção ai_logs
+    match /ai_logs/{logId} {
+      allow read, write: if isAuthenticated();
+    }
+    
+    // Coleção de configurações do sistema
+    match /system/{configId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+    
+    // Catch-all para outros documentos - permitir para desenvolvimento
+    match /{document=**} {
+      allow read, write: if isAuthenticated();
+    }
+  }
+}

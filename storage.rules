@@ -1,0 +1,189 @@
+rules_version = '2';
+
+// Firebase Storage Security Rules para ClimACT
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // ===== FUNÇÕES AUXILIARES =====
+    
+    // Verificar se usuário está autenticado
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Verificar se é o próprio usuário
+    function isOwner(uid) {
+      return request.auth.uid == uid;
+    }
+    
+    // Verificar role do usuário
+    function hasRole(role) {
+      return isAuthenticated() && 
+             request.auth.token.role == role;
+    }
+    
+    // Verificar se tem uma das roles especificadas
+    function hasAnyRole(roles) {
+      return isAuthenticated() && 
+             request.auth.token.role in roles;
+    }
+    
+    // Verificar tamanho do arquivo (em bytes)
+    function isValidFileSize(maxSizeBytes) {
+      return request.resource.size <= maxSizeBytes;
+    }
+    
+    // Verificar tipo de arquivo
+    function isValidImageType() {
+      return request.resource.contentType.matches('image/.*');
+    }
+    
+    function isValidVideoType() {
+      return request.resource.contentType.matches('video/.*');
+    }
+    
+    function isValidDocumentType() {
+      return request.resource.contentType in [
+        'application/pdf',
+        'image/jpeg',
+        'image/png',
+        'image/jpg'
+      ];
+    }
+    
+    // ===== IMAGENS DE PERFIL =====
+    
+    match /profile-images/{userId}/{imageId} {
+      // Usuário pode ler suas próprias imagens de perfil e admins podem ler todas
+      allow read: if isOwner(userId) || hasRole('admin');
+      
+      // Usuário pode fazer upload de suas próprias imagens de perfil
+      allow write: if isOwner(userId) && 
+        isValidImageType() && 
+        isValidFileSize(5 * 1024 * 1024); // 5MB max
+      
+      // Usuário pode deletar suas próprias imagens
+      allow delete: if isOwner(userId) || hasRole('admin');
+    }
+    
+    // ===== IMAGENS E VÍDEOS DE RELATÓRIOS =====
+    
+    match /report-media/{userId}/{reportId}/{mediaId} {
+      // RN02: Mídia de relatórios pode ser vista por todos (relatórios públicos)
+      allow read: if true;
+      
+      // RN04: Apenas usuários autenticados podem fazer upload
+      allow write: if isAuthenticated() && 
+        isOwner(userId) && 
+        (isValidImageType() || isValidVideoType()) &&
+        isValidFileSize(50 * 1024 * 1024); // 50MB max
+      
+      // Apenas o autor e admins podem deletar
+      allow delete: if isOwner(userId) || hasRole('admin');
+    }
+    
+    // ===== DOCUMENTOS PARA EVOLUÇÃO DE PERFIL =====
+    
+    match /profile-documents/{userId}/{documentType} {
+      // RN01: Apenas o usuário e admins podem ver documentos
+      allow read: if isOwner(userId) || hasRole('admin');
+      
+      // RN01: Usuário pode fazer upload de documentos para evolução de perfil
+      allow write: if isOwner(userId) && 
+        isValidDocumentType() &&
+        isValidFileSize(10 * 1024 * 1024); // 10MB max
+      
+      // Apenas admins podem deletar documentos (auditoria)
+      allow delete: if hasRole('admin');
+    }
+    
+    // ===== EVIDÊNCIAS PARA DENÚNCIAS ANÔNIMAS =====
+    
+    match /anonymous-evidence/{protocol}/{evidenceId} {
+      // RN07: Apenas admins e defesa civil podem ver evidências de denúncias anônimas
+      allow read: if hasAnyRole(['admin', 'defesa_civil']);
+      
+      // RN07: Upload via Cloud Functions apenas (para manter anonimato)
+      allow write: if false;
+      
+      // Apenas admins podem deletar
+      allow delete: if hasRole('admin');
+    }
+    
+    // ===== CERTIFICADOS =====
+    
+    match /certificates/{userId}/{certificateId} {
+      // RN03: Certificados podem ser vistos pelo usuário e admins
+      allow read: if isOwner(userId) || hasRole('admin');
+      
+      // Certificados são gerados via Cloud Functions
+      allow write: if false;
+      
+      // Apenas admins podem deletar
+      allow delete: if hasRole('admin');
+    }
+    
+    // ===== IMAGENS EDUCACIONAIS =====
+    
+    match /educational-content/{trailId}/{contentId} {
+      // RN03: Conteúdo educacional é público
+      allow read: if true;
+      
+      // Apenas admins podem fazer upload de conteúdo educacional
+      allow write: if hasRole('admin') && 
+        (isValidImageType() || isValidVideoType()) &&
+        isValidFileSize(100 * 1024 * 1024); // 100MB max
+      
+      // Apenas admins podem deletar
+      allow delete: if hasRole('admin');
+    }
+    
+    // ===== BACKUPS DE DADOS (LGPD) =====
+    
+    match /data-exports/{userId}/{exportId} {
+      // RN12: Usuário pode baixar seus próprios dados exportados
+      allow read: if isOwner(userId) || hasRole('admin');
+      
+      // Exports são criados via Cloud Functions
+      allow write: if false;
+      
+      // Apenas admins podem deletar
+      allow delete: if hasRole('admin');
+    }
+    
+    // ===== LOGS E AUDITORIA =====
+    
+    match /audit-logs/{logId} {
+      // RN09: Apenas admins podem acessar logs de auditoria
+      allow read: if hasRole('admin');
+      
+      // Logs são criados via Cloud Functions
+      allow write: if false;
+      
+      // Logs não podem ser deletados (auditoria permanente)
+      allow delete: if false;
+    }
+    
+    // ===== IMAGENS DE ORGANIZAÇÕES =====
+    
+    match /organization-images/{orgId}/{imageId} {
+      // RN06: Imagens de organizações são públicas
+      allow read: if true;
+      
+      // Apenas ONGs verificadas podem fazer upload
+      allow write: if hasAnyRole(['ong', 'admin']) && 
+        isValidImageType() &&
+        isValidFileSize(10 * 1024 * 1024); // 10MB max
+      
+      // Apenas a organização e admins podem deletar
+      allow delete: if hasAnyRole(['ong', 'admin']);
+    }
+    
+    // ===== REGRA PADRÃO =====
+    
+    // Negar acesso a qualquer arquivo não especificado
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
